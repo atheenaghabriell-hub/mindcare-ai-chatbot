@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('label', 40);
             $table->decimal('score', 6, 5)->nullable();
             $table->string('analyzer', 80);
-            $table->timestamp('analyzed_at');
+            $table->dateTime('analyzed_at');
             $table->timestamps();
         });
     }

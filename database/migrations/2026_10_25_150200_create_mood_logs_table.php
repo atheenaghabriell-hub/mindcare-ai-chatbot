@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('mood', 40);
             $table->unsignedTinyInteger('intensity')->nullable();
-            $table->timestamp('recorded_at');
+            $table->dateTime('recorded_at');
             $table->timestamps();
 
             $table->index(['user_id', 'recorded_at']);

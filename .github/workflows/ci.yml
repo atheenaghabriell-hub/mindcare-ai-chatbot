@@ -1,0 +1,78 @@
+name: Laravel CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - database: mysql
+            connection: mysql
+            port: 3306
+            user: mindcare
+            password: mindcare-test
+          - database: postgresql
+            connection: pgsql
+            port: 5432
+            user: mindcare
+            password: mindcare-test
+    env:
+      DB_CONNECTION: ${{ matrix.connection }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${{ matrix.port }}
+      DB_DATABASE: mindcare_test
+      DB_USERNAME: ${{ matrix.user }}
+      DB_PASSWORD: mindcare-test
+      DB_SSLMODE: disable
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start runner database
+        run: |
+          if [ "$DB_CONNECTION" = "mysql" ]; then
+            sudo systemctl start mysql.service
+            sudo mysql -e "CREATE DATABASE mindcare_test; CREATE USER 'mindcare'@'%' IDENTIFIED BY 'mindcare-test'; GRANT ALL PRIVILEGES ON mindcare_test.* TO 'mindcare'@'%';"
+          else
+            sudo systemctl start postgresql.service
+            sudo -u postgres psql -c "CREATE USER mindcare WITH PASSWORD 'mindcare-test';"
+            sudo -u postgres psql -c "CREATE DATABASE mindcare_test OWNER mindcare;"
+          fi
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, pdo_mysql, pdo_pgsql, intl, zip
+          coverage: none
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Prepare Laravel application key
+        run: php artisan key:generate
+      - name: Check Composer manifest
+        run: composer validate --no-check-publish
+      - name: Check PHP formatting
+        run: vendor/bin/pint --test
+      - name: Run database migrations
+        run: php artisan migrate --force
+      - name: Run test suite
+        run: php artisan test
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm audit
+      - run: npm run build

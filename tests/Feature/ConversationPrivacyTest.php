@@ -7,6 +7,7 @@ use App\Models\Message;
 use App\Models\MoodLog;
 use App\Models\SentimentLog;
 use App\Models\User;
+use App\Policies\ConversationPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -19,7 +20,7 @@ class ConversationPrivacyTest extends TestCase
         $owner = User::factory()->create();
         $otherUser = User::factory()->create();
         $conversation = Conversation::factory()->for($owner)->create();
-        $policy = app(\App\Policies\ConversationPolicy::class);
+        $policy = app(ConversationPolicy::class);
 
         $this->assertTrue($policy->view($owner, $conversation));
         $this->assertFalse($policy->view($otherUser, $conversation));
@@ -31,7 +32,7 @@ class ConversationPrivacyTest extends TestCase
         $conversation = Conversation::factory()->for($user)->create(['status' => 'archived']);
 
         $this->assertFalse(
-            app(\App\Policies\ConversationPolicy::class)->sendMessage($user, $conversation)
+            app(ConversationPolicy::class)->sendMessage($user, $conversation)
         );
     }
 

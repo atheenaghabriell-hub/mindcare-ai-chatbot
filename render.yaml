@@ -1,0 +1,4 @@
+# No Render Blueprint is provided under the current no-Docker requirement.
+# Render's native web runtimes do not include PHP/Laravel. Do not try to deploy
+# this application as a static or Node service. See
+# docs/DEPLOYMENT-RENDER-NEON-GITHUB.md for the hosting limitation and options.

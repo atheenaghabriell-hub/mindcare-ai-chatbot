@@ -5,8 +5,8 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
@@ -45,6 +45,10 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'gemini_data_sharing_consented_at' => 'datetime',
+            'context_memory_enabled' => 'boolean',
+            'crisis_review_consented_at' => 'datetime',
+            'is_admin' => 'boolean',
         ];
     }
 
@@ -56,5 +60,20 @@ class User extends Authenticatable
     public function moodLogs(): HasMany
     {
         return $this->hasMany(MoodLog::class);
+    }
+
+    public function hasConsentedToGeminiSharing(): bool
+    {
+        return $this->gemini_data_sharing_consented_at !== null;
+    }
+
+    public function crisisReviewEvents(): HasMany
+    {
+        return $this->hasMany(CrisisReviewEvent::class);
+    }
+
+    public function aiUsageLogs(): HasMany
+    {
+        return $this->hasMany(AiUsageLog::class);
     }
 }
