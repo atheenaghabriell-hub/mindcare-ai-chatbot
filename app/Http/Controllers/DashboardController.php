@@ -16,6 +16,18 @@ class DashboardController extends Controller
             ->get()
             ->reverse()
             ->values();
+        $mostCommonMood = $moods
+            ->countBy('mood')
+            ->sortDesc()
+            ->keys()
+            ->first();
+        $moodLabels = [
+            'very_low' => 'very low',
+            'low' => 'low',
+            'neutral' => 'neutral',
+            'good' => 'good',
+            'very_good' => 'very good',
+        ];
 
         return view('dashboard.index', [
             'conversations' => $user->conversations()
@@ -31,6 +43,9 @@ class DashboardController extends Controller
             ],
             'conversationCount' => $user->conversations()->count(),
             'moodCount' => $user->moodLogs()->count(),
+            'reflectionInsight' => $mostCommonMood
+                ? 'The mood you selected most often in your recent check-ins is '.$moodLabels[$mostCommonMood].'. Continue using daily reflections to monitor your emotional well-being.'
+                : 'Your reflections are personal to you. Record a mood check-in when you feel ready to begin noticing patterns over time.',
         ]);
     }
 }

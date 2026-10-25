@@ -8,10 +8,14 @@
         <div class="col-lg-8">
             <span class="badge rounded-pill text-bg-success-subtle text-success-emphasis mb-3">Your private wellbeing space</span>
             <h1 class="display-6 fw-semibold mb-2">Welcome back, {{ auth()->user()->name }}</h1>
-            <p class="lead text-secondary mb-0">Take a moment for yourself. Small check-ins can help you reflect on how you’re feeling.</p>
+            <p class="lead text-secondary mb-0">Take a moment to reflect and track your emotional well-being. Small steps can make space for self-understanding.</p>
         </div>
         <div class="col-lg-4 text-lg-end">
-            <a href="#mood-checkin" class="btn btn-success btn-lg">Check in with yourself</a>
+            <form method="POST" action="{{ route('conversations.store') }}">
+                @csrf
+                <input type="hidden" name="title" value="Reflection {{ now()->format('M j') }}">
+                <button class="btn btn-success btn-lg" type="submit">Start new conversation</button>
+            </form>
         </div>
     </div>
     <p class="small text-secondary mt-4 mb-0">Mood and sentiment features are reflective tools, not a diagnosis or clinical assessment.</p>
@@ -22,7 +26,9 @@
         <article class="card dashboard-stat-card">
             <div class="d-flex align-items-start justify-content-between mb-3">
                 <span class="text-secondary fw-medium">Conversations</span>
-                <span class="dashboard-stat-icon" aria-hidden="true">↗</span>
+                <span class="dashboard-stat-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-5.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h8M8 14h5"/></svg>
+                </span>
             </div>
             <div class="dashboard-stat-value mb-2">{{ $conversationCount }}</div>
             <a class="link-success link-underline-opacity-0 link-underline-opacity-75-hover" href="{{ route('conversations.index') }}">View your history</a>
@@ -32,7 +38,9 @@
         <article class="card dashboard-stat-card">
             <div class="d-flex align-items-start justify-content-between mb-3">
                 <span class="text-secondary fw-medium">Mood check-ins</span>
-                <span class="dashboard-stat-icon" aria-hidden="true">♡</span>
+                <span class="dashboard-stat-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.8 8.6c0 5.2-8.8 10-8.8 10s-8.8-4.8-8.8-10a4.6 4.6 0 0 1 8.8-1.9 4.6 4.6 0 0 1 8.8 1.9Z"/></svg>
+                </span>
             </div>
             <div class="dashboard-stat-value mb-2">{{ $moodCount }}</div>
             <a class="link-success link-underline-opacity-0 link-underline-opacity-75-hover" href="#mood-checkin">Record a check-in</a>
@@ -42,10 +50,12 @@
         <article class="card dashboard-stat-card">
             <div class="d-flex align-items-start justify-content-between mb-3">
                 <span class="text-secondary fw-medium">Recent reflections</span>
-                <span class="dashboard-stat-icon" aria-hidden="true">✦</span>
+                <span class="dashboard-stat-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M3 12h18"/><path d="m5.6 5.6 12.8 12.8M18.4 5.6 5.6 18.4"/></svg>
+                </span>
             </div>
             <div class="dashboard-stat-value mb-2">{{ $conversations->sum('messages_count') }}</div>
-            <span class="text-secondary">Messages in your recent conversations</span>
+            <span class="text-secondary">Messages across your latest conversations</span>
         </article>
     </div>
 </section>
@@ -62,43 +72,57 @@
             </div>
 
             @forelse($conversations as $conversation)
-                <a class="conversation-card d-flex justify-content-between align-items-center gap-3 text-decoration-none" href="{{ route('conversations.show', $conversation) }}">
-                    <span class="min-w-0">
-                        <span class="d-block fw-semibold text-body text-truncate">{{ $conversation->title }}</span>
-                        <span class="small text-secondary">{{ $conversation->last_message_at?->diffForHumans() ?? 'Just started' }}</span>
-                    </span>
-                    <span class="d-flex align-items-center gap-2 flex-shrink-0">
-                        <span class="badge rounded-pill text-bg-light">{{ $conversation->messages_count }} {{ \Illuminate\Support\Str::plural('message', $conversation->messages_count) }}</span>
-                        <span class="text-success" aria-hidden="true">→</span>
-                    </span>
-                </a>
+                <article class="conversation-card d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+                    <div class="min-w-0">
+                        <h3 class="h6 fw-semibold text-body text-truncate mb-1">{{ $conversation->title }}</h3>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <span class="badge rounded-pill text-bg-light">{{ $conversation->messages_count }} {{ \Illuminate\Support\Str::plural('message', $conversation->messages_count) }}</span>
+                            @if($conversation->last_message_at)
+                                <time class="small text-secondary" datetime="{{ $conversation->last_message_at->toIso8601String() }}">{{ $conversation->last_message_at->diffForHumans() }}</time>
+                            @else
+                                <span class="small text-secondary">Just started</span>
+                            @endif
+                        </div>
+                    </div>
+                    <a class="btn btn-outline-success btn-sm flex-shrink-0" href="{{ route('conversations.show', $conversation) }}">Open conversation</a>
+                </article>
             @empty
-                <div class="text-center py-4">
-                    <p class="text-secondary mb-3">Your conversation history will appear here when you’re ready.</p>
+                <div class="dashboard-empty-state text-center py-4">
+                    <p class="text-secondary mb-3">No conversations yet.</p>
+                    <form method="POST" action="{{ route('conversations.store') }}">
+                        @csrf
+                        <input type="hidden" name="title" value="Reflection {{ now()->format('M j') }}">
+                        <button class="btn btn-outline-success" type="submit">Start your first conversation</button>
+                    </form>
                 </div>
             @endforelse
 
-            <form method="POST" action="{{ route('conversations.store') }}" class="mt-3">
+            @if($conversations->isNotEmpty())
+                <form method="POST" action="{{ route('conversations.store') }}" class="mt-3">
                 @csrf
                 <input type="hidden" name="title" value="Reflection {{ now()->format('M j') }}">
-                <button class="btn btn-success" type="submit">Start a conversation</button>
-            </form>
+                    <button class="btn btn-outline-success" type="submit">Start another conversation</button>
+                </form>
+            @endif
         </article>
     </div>
 
     <div class="col-lg-5">
         <article class="card h-100 p-4">
             <h2 class="h4 mb-1">Mood trend</h2>
-            <p class="text-secondary small mb-3">Your recent self-reported check-ins. This is not a clinical assessment.</p>
+            <p class="text-secondary small mb-3" id="mood-chart-description">Your last 7 self-reported check-ins. This is not a clinical assessment.</p>
             @if($moods->isNotEmpty())
                 <div class="mood-chart-wrap">
-                    <canvas id="mood-trend-chart" role="img" aria-label="Chart of your recent mood check-in intensity"></canvas>
+                    <canvas id="mood-trend-chart" role="img" aria-label="Chart of your last 7 mood check-in intensity scores" aria-describedby="mood-chart-description"></canvas>
                 </div>
                 <script>window.mindCareMoodData = @js($moodChartData);</script>
             @else
                 <div class="d-flex flex-column flex-grow-1 justify-content-center align-items-center text-center py-4">
-                    <span class="dashboard-stat-icon mb-3" aria-hidden="true">♡</span>
-                    <p class="text-secondary mb-0">Your personal trend will appear after your first check-in.</p>
+                    <span class="dashboard-stat-icon mb-3" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17 9 11l4 4 8-9"/><path d="M15 6h6v6"/></svg>
+                    </span>
+                    <p class="text-secondary mb-3">No mood entries recorded.</p>
+                    <a class="btn btn-outline-success btn-sm" href="#mood-checkin">Record your first mood</a>
                 </div>
             @endif
         </article>
@@ -148,8 +172,8 @@
                 @php
                     $moodStyle = match($mood->mood) {
                         'very_low' => 'text-bg-danger',
-                        'low' => 'text-bg-warning',
-                        'neutral' => 'text-bg-secondary',
+                        'low' => 'mood-badge-orange',
+                        'neutral' => 'text-bg-warning',
                         'good' => 'text-bg-success',
                         'very_good' => 'text-bg-primary',
                         default => 'text-bg-light',
@@ -166,9 +190,25 @@
                     <time class="small text-secondary flex-shrink-0" datetime="{{ $mood->recorded_at->toIso8601String() }}">{{ $mood->recorded_at->format('M j') }}</time>
                 </div>
             @empty
-                <p class="text-secondary mb-0">Your saved check-ins will appear here.</p>
+                <div class="dashboard-empty-state">
+                    <p class="text-secondary mb-3">No mood entries recorded.</p>
+                    <a class="btn btn-outline-success btn-sm" href="#mood-checkin">Record your first mood</a>
+                </div>
             @endforelse
         </article>
+    </div>
+</section>
+
+<section class="card ai-insight-card p-4 mb-4" aria-labelledby="ai-insight-title">
+    <div class="d-flex align-items-start gap-3">
+        <span class="dashboard-stat-icon flex-shrink-0" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 14.5 9.5 21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z"/><path d="m19 2 .8 2.2L22 5l-2.2.8L19 8l-.8-2.2L16 5l2.2-.8L19 2Z"/></svg>
+        </span>
+        <div>
+            <h2 class="h5 mb-2" id="ai-insight-title">AI Reflection Insight</h2>
+            <p class="text-body-secondary mb-2">{{ $reflectionInsight }}</p>
+            <p class="small text-secondary mb-0">This is a simple reflection based on your recent check-ins, not an AI-generated assessment.</p>
+        </div>
     </div>
 </section>
 

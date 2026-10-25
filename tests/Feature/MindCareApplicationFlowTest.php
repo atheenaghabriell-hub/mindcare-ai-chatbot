@@ -138,7 +138,43 @@ class MindCareApplicationFlowTest extends TestCase
             ->assertSee('text-bg-success', false)
             ->assertSee('Good')
             ->assertSee('window.mindCareMoodData')
-            ->assertSee('self-reported check-ins');
+            ->assertSee('last 7 self-reported check-ins')
+            ->assertSee('AI Reflection Insight')
+            ->assertSee('The mood you selected most often in your recent check-ins is good.');
+    }
+
+    public function test_dashboard_shows_actionable_empty_states(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('No conversations yet.')
+            ->assertSee('No mood entries recorded.')
+            ->assertSee('Start your first conversation')
+            ->assertSee('Record your first mood')
+            ->assertSee('Your reflections are personal to you.');
+    }
+
+    public function test_dashboard_chart_excludes_mood_entries_older_than_the_latest_seven(): void
+    {
+        $user = User::factory()->create();
+        $oldestEntry = now()->startOfDay()->subDays(8);
+
+        for ($daysAgo = 8; $daysAgo >= 1; $daysAgo--) {
+            MoodLog::factory()->for($user)->create([
+                'mood' => 'neutral',
+                'intensity' => 3,
+                'recorded_at' => now()->startOfDay()->subDays($daysAgo),
+            ]);
+        }
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee($oldestEntry->format('M j'))
+            ->assertSee(now()->startOfDay()->subDay()->format('M j'));
     }
 
     public function test_message_is_encrypted_at_rest_and_gemini_requires_explicit_consent(): void
