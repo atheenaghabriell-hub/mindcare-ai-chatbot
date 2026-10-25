@@ -15,7 +15,7 @@ jobs:
     env:
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_KEY: ${{ secrets['APP_KEY'] }}
+      APP_KEY: ${{ secrets.APP_KEY }}
       DB_CONNECTION: pgsql
       DB_URL: ${{ secrets.NEON_DATABASE_URL }}
       DB_SSLMODE: require

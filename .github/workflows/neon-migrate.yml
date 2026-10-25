@@ -1,0 +1,42 @@
+name: Neon PostgreSQL migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_migration:
+        description: Confirm that migrations have been reviewed and should be applied to Neon
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neon-production-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: ${{ inputs.confirm_migration }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${{ secrets.APP_KEY }}
+      DB_CONNECTION: pgsql
+      DB_URL: ${{ secrets.NEON_MIGRATION_URL }}
+      DB_SSLMODE: require
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, pdo_pgsql
+          coverage: none
+      - name: Install production dependencies
+        run: composer install --no-dev --no-interaction --prefer-dist --no-progress
+      - name: Apply reviewed migrations to Neon
+        run: php artisan migrate --force

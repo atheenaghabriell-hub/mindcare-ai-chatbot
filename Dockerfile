@@ -12,7 +12,7 @@ RUN npm run build
 FROM php:8.3-apache AS app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libcurl4-openssl-dev libicu-dev libpq-dev libzip-dev unzip \
+    && apt-get install -y --no-install-recommends libcurl4-openssl-dev libicu-dev libonig-dev libpq-dev libzip-dev unzip \
     && docker-php-ext-install curl intl mbstring opcache pdo_mysql pdo_pgsql zip \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
