@@ -122,6 +122,18 @@ class MindCareApplicationFlowTest extends TestCase
             ->assertSee($conversation->title);
     }
 
+    public function test_conversation_history_uses_bootstrap_pagination(): void
+    {
+        $user = User::factory()->create();
+        Conversation::factory()->count(16)->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('conversations.index'))
+            ->assertOk()
+            ->assertSee('page-item', false)
+            ->assertDontSee('flex items-center justify-between');
+    }
+
     public function test_dashboard_renders_recent_mood_badge_and_chart_data(): void
     {
         $user = User::factory()->create();

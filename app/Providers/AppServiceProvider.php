@@ -6,6 +6,7 @@ use App\Models\Conversation;
 use App\Policies\ConversationPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -27,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::useBootstrapFive();
+
         if (
             $this->app->environment('production')
             || parse_url((string) config('app.url'), PHP_URL_SCHEME) === 'https'
