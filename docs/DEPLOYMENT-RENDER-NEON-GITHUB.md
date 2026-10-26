@@ -50,14 +50,16 @@ APP_URL=<Render service HTTPS URL>
 DB_CONNECTION=pgsql
 DB_URL=<Neon pooled connection URL>
 DB_SSLMODE=require
+SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
+CACHE_STORE=file
 GEMINI_API_KEY=<optional secret>
 GEMINI_MODEL=<model available to the configured Google account>
 ```
 
 5. Keep the same `APP_KEY` across deployments because chat messages use Laravel encrypted casts. Back it up securely; key loss makes existing messages unreadable.
-6. The Blueprint checks `/up` for health. Use Neon for durable application data; Render's free service filesystem is ephemeral, so do not rely on it for user records or uploads.
-7. Leave `TRUSTED_PROXIES` unset unless the host requires forwarded-proxy headers. If required, configure only the trusted proxy IPs/CIDRs documented by that host; never set it to `*`. Login throttling also tracks normalized account identifiers independently of client IP.
+6. The Blueprint checks `/up` for health. Use Neon for durable application data; Render's free service filesystem is ephemeral, so do not rely on it for user records or uploads. The Blueprint uses Laravel's file cache to keep login throttling independent of Neon cache-table failures. File cache is per-instance and is cleared when the ephemeral filesystem is replaced; for multiple web instances, configure a shared cache backend and verify its availability.
+7. Leave `SESSION_DOMAIN` unset so the browser uses a host-only cookie. Leave `TRUSTED_PROXIES` unset unless the host requires forwarded-proxy headers. If required, configure only the trusted proxy IPs/CIDRs documented by that host; never set it to `*`. Login throttling also tracks normalized account identifiers independently of client IP.
 
 ## Render deployment
 

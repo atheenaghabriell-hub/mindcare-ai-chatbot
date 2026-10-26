@@ -15,14 +15,12 @@ jobs:
     env:
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_KEY: ${{ secrets.APP_KEY }}
       DB_CONNECTION: pgsql
-      DB_URL: ${{ secrets.NEON_DATABASE_URL }}
       DB_SSLMODE: require
     steps:
       - uses: actions/checkout@v4
       - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea # v2
         with:
           php-version: "8.3"
           extensions: mbstring, pdo_pgsql
@@ -31,3 +29,6 @@ jobs:
         run: composer install --no-dev --no-interaction --prefer-dist --no-progress
       - name: Purge expired opt-in safety metadata
         run: php artisan mindcare:purge-expired-crisis-reviews
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          DB_URL: ${{ secrets.NEON_DATABASE_URL }}

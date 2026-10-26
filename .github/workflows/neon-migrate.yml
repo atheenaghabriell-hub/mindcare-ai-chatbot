@@ -24,14 +24,12 @@ jobs:
     env:
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_KEY: ${{ secrets.APP_KEY }}
       DB_CONNECTION: pgsql
-      DB_URL: ${{ secrets.NEON_MIGRATION_URL }}
       DB_SSLMODE: require
     steps:
       - uses: actions/checkout@v4
       - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea # v2
         with:
           php-version: "8.3"
           extensions: mbstring, pdo_pgsql
@@ -40,3 +38,6 @@ jobs:
         run: composer install --no-dev --no-interaction --prefer-dist --no-progress
       - name: Apply reviewed migrations to Neon
         run: php artisan migrate --force
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          DB_URL: ${{ secrets.NEON_MIGRATION_URL }}
