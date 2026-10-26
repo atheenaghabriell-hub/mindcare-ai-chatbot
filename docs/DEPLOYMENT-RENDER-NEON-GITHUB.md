@@ -68,7 +68,7 @@ The repository includes a minimal Docker runtime because Render does not provide
 1. Push the repository to GitHub. The `.env` file and real credentials must not be committed.
 2. In Render, choose **New → Blueprint**, connect the GitHub repository, and select the branch to deploy. Render reads `render.yaml` and builds the app from the `Dockerfile`.
 3. Enter the prompted `APP_KEY`, `APP_URL`, `DB_URL`, `GEMINI_API_KEY`, and `GEMINI_MODEL` values. Use a newly rotated Gemini key and a newly rotated Neon database password; never reuse credentials exposed in chat.
-4. Set `APP_URL` to the HTTPS URL Render assigns to the service. Keep `APP_DEBUG=false`.
+4. Set `APP_URL` to the HTTPS URL Render assigns to the service. Laravel uses that HTTPS scheme when generating page, form, and Vite asset URLs, including behind Render's HTTP reverse proxy. Keep `APP_DEBUG=false`.
 5. Add GitHub Actions secrets `APP_KEY` and `NEON_MIGRATION_URL`, then run the manually confirmed migration workflow. The migration URL should be direct/non-pooled. Render's free plan does not run paid pre-deploy commands, so migrations are intentionally a separate, explicit step.
 6. Verify the service health check at `/up`, then register a test account and exercise the app. Confirm Render logs go to standard error and the database is Neon.
 
