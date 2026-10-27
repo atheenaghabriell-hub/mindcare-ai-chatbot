@@ -11,6 +11,7 @@ use App\Services\Safety\CrisisDetectionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class MindCareApplicationFlowTest extends TestCase
@@ -285,6 +286,42 @@ class MindCareApplicationFlowTest extends TestCase
             && $request['contents'][0]['parts'][0]['text'] === 'I feel calm today.');
         $this->assertDatabaseHas('messages', ['conversation_id' => $conversation->id, 'role' => 'assistant']);
         $this->assertDatabaseHas('ai_usage_logs', ['user_id' => $user->id, 'status' => 'succeeded']);
+    }
+
+    public function test_failed_gemini_request_logs_provider_status_without_chat_content_or_credentials(): void
+    {
+        config([
+            'services.gemini.api_key' => 'test-key',
+            'services.gemini.model' => 'test-model',
+        ]);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'error' => [
+                    'code' => 429,
+                    'status' => 'RESOURCE_EXHAUSTED',
+                ],
+            ], 429),
+        ]);
+        Log::spy();
+
+        $user = User::factory()->create(['gemini_data_sharing_consented_at' => now()]);
+        $conversation = Conversation::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->post(route('messages.store', $conversation), ['content' => 'Private test message'])
+            ->assertRedirect(route('conversations.show', $conversation))
+            ->assertSessionHasErrors('chat');
+
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message, array $context): bool => $message === 'Gemini API request failed.'
+                && $context['http_status'] === 429
+                && $context['provider_status'] === 'RESOURCE_EXHAUSTED'
+                && $context['model'] === 'test-model'
+                && ! array_key_exists('api_key', $context)
+                && ! array_key_exists('prompt', $context))
+            ->once();
+
+        $this->assertDatabaseHas('ai_usage_logs', ['user_id' => $user->id, 'status' => 'failed']);
     }
 
     public function test_context_memory_is_opt_in_and_only_uses_the_same_users_prior_history(): void

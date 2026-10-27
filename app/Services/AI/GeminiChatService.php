@@ -4,6 +4,7 @@ namespace App\Services\AI;
 
 use App\Models\Conversation;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class GeminiChatService
@@ -14,10 +15,18 @@ class GeminiChatService
         $model = config('services.gemini.model');
 
         if (! is_string($apiKey) || $apiKey === '') {
+            Log::warning('Gemini configuration is incomplete.', [
+                'missing_setting' => 'GEMINI_API_KEY',
+            ]);
+
             throw new RuntimeException('Gemini is not configured. Add GEMINI_API_KEY to the local environment.');
         }
 
         if (! is_string($model) || $model === '') {
+            Log::warning('Gemini configuration is incomplete.', [
+                'missing_setting' => 'GEMINI_MODEL',
+            ]);
+
             throw new RuntimeException('Gemini is not configured. Add GEMINI_MODEL to the local environment.');
         }
 
@@ -66,6 +75,13 @@ class GeminiChatService
             ]);
 
         if (! $response->successful()) {
+            Log::warning('Gemini API request failed.', [
+                'http_status' => $response->status(),
+                'provider_code' => $response->json('error.code'),
+                'provider_status' => $response->json('error.status'),
+                'model' => $model,
+            ]);
+
             throw new RuntimeException('Gemini could not complete the request. Please try again later.');
         }
 
