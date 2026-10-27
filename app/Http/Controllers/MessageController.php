@@ -62,9 +62,18 @@ class MessageController extends Controller
             $reply = $gemini->reply($conversation);
         } catch (RuntimeException|ConnectionException $exception) {
             $this->recordUsage($request, $content, null, 'failed', $startedAt);
+
+            $exceptionMessage = $exception->getMessage();
+            $apiKey = config('services.gemini.api_key');
+
+            if (is_string($apiKey) && $apiKey !== '') {
+                $exceptionMessage = str_replace($apiKey, '[redacted]', $exceptionMessage);
+            }
+
             Log::warning('Gemini response failed.', [
                 'conversation_id' => $conversation->id,
                 'exception' => $exception::class,
+                'exception_message' => $exceptionMessage,
             ]);
 
             return redirect()->route('conversations.show', $conversation)

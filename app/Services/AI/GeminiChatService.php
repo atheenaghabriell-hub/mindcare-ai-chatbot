@@ -88,6 +88,12 @@ class GeminiChatService
         $text = $response->json('candidates.0.content.parts.0.text');
 
         if (! is_string($text) || trim($text) === '') {
+            Log::warning('Gemini API returned no text candidate.', [
+                'model' => $model,
+                'finish_reason' => $response->json('candidates.0.finishReason'),
+                'block_reason' => $response->json('promptFeedback.blockReason'),
+            ]);
+
             throw new RuntimeException('Gemini returned an empty response. Please try again.');
         }
 

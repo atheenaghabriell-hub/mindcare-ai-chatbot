@@ -321,6 +321,52 @@ class MindCareApplicationFlowTest extends TestCase
                 && ! array_key_exists('prompt', $context))
             ->once();
 
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message, array $context): bool => $message === 'Gemini response failed.'
+                && $context['exception'] === \RuntimeException::class
+                && $context['exception_message'] === 'Gemini could not complete the request. Please try again later.'
+                && ! str_contains($context['exception_message'], 'test-key')
+                && ! str_contains($context['exception_message'], 'Private test message'))
+            ->once();
+
+        $this->assertDatabaseHas('ai_usage_logs', ['user_id' => $user->id, 'status' => 'failed']);
+    }
+
+    public function test_empty_gemini_response_logs_safe_candidate_metadata(): void
+    {
+        config([
+            'services.gemini.api_key' => 'test-key',
+            'services.gemini.model' => 'test-model',
+        ]);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [[
+                    'finishReason' => 'SAFETY',
+                ]],
+                'promptFeedback' => [
+                    'blockReason' => 'SAFETY',
+                ],
+            ]),
+        ]);
+        Log::spy();
+
+        $user = User::factory()->create(['gemini_data_sharing_consented_at' => now()]);
+        $conversation = Conversation::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->post(route('messages.store', $conversation), ['content' => 'Private test message'])
+            ->assertRedirect(route('conversations.show', $conversation))
+            ->assertSessionHasErrors('chat');
+
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message, array $context): bool => $message === 'Gemini API returned no text candidate.'
+                && $context['model'] === 'test-model'
+                && $context['finish_reason'] === 'SAFETY'
+                && $context['block_reason'] === 'SAFETY'
+                && ! array_key_exists('prompt', $context)
+                && ! array_key_exists('response_text', $context))
+            ->once();
+
         $this->assertDatabaseHas('ai_usage_logs', ['user_id' => $user->id, 'status' => 'failed']);
     }
 
