@@ -10,7 +10,7 @@
         @csrf @method('PUT')
         <h2>Gemini AI processing</h2>
         <p>When enabled, your message and up to 10 recent turns from the current conversation are sent to Google Gemini for a reply. Messages are stored in this app. Gemini availability and provider data handling depend on your configured Google account and applicable provider terms.</p>
-        <p class="small"><strong>Configuration:</strong> {{ $geminiConfigured ? 'API key is configured on the server.' : 'Gemini API key is not configured; chat requests will fail until it is set.' }}</p>
+        <p class="small"><strong>Configuration:</strong> {{ $geminiConfigured ? 'Gemini API key and model are configured on the server. This does not verify the key, model access, quota, or provider availability.' : 'Gemini API key or model is missing from server configuration; chat requests will fail until both are set.' }}</p>
         <label><input type="checkbox" name="gemini_consent" value="1" style="width:auto" @checked(auth()->user()->hasConsentedToGeminiSharing())> I consent to send my chat messages to Gemini for responses.</label>
         <h2>Context memory</h2>
         <p>When enabled, selected recent messages from your other conversations may also be included with a Gemini request. This is off by default.</p>

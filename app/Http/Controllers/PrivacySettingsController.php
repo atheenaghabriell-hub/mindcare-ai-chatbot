@@ -12,9 +12,12 @@ class PrivacySettingsController extends Controller
 {
     public function edit(): View
     {
+        $apiKey = config('services.gemini.api_key');
+        $model = config('services.gemini.model');
+
         return view('profile.privacy', [
-            'geminiConfigured' => config('services.gemini.api_key') !== null
-                && config('services.gemini.api_key') !== '',
+            'geminiConfigured' => is_string($apiKey) && $apiKey !== ''
+                && is_string($model) && $model !== '',
         ]);
     }
 

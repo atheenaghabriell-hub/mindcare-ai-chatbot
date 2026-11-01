@@ -4,16 +4,16 @@ This note explains the server-side chat request, the generic failure shown in th
 
 ## Request flow
 
-1. The browser submits a standard HTML `POST` form from `resources/views/chat/show.blade.php`. This is not a JavaScript `fetch()` or Axios request.
+1. `resources/js/script.js` intercepts the chat form in `resources/views/chat/show.blade.php` and sends a same-origin `fetch()` POST with JSON and the Laravel CSRF token.
 2. `routes/web.php` registers `POST /conversations/{conversation}/messages` as `messages.store`. It is behind the `web` and `auth` middleware and uses the `throttle:chat` rate limiter.
 3. `SendMessageRequest` authorizes access to the conversation and validates a required string up to 4,000 characters.
 4. `MessageController::store()` persists the user message, updates the conversation timestamp, and writes sentiment metadata.
 5. Crisis-detection messages receive the application's local safety response and do not call Gemini. For other messages, the controller checks that the user explicitly consented to Gemini processing.
 6. If consent is present, `GeminiChatService::reply()` reads the server configuration, builds conversation history, and sends a synchronous Laravel HTTP POST to Google's `generateContent` endpoint. The timeout is 30 seconds.
-7. On a successful Gemini response, the controller records successful usage, saves the assistant message, and redirects back to the conversation.
-8. On a caught `RuntimeException` or `ConnectionException` from the Gemini call, the user message remains saved, the usage result is recorded as failed, a warning is logged, and the browser is redirected back with a generic chat error.
+7. On a successful Gemini response, the controller records successful usage, saves the assistant message, and returns it as JSON for the browser to append to the chat.
+8. The Gemini service retries one time after a connection failure, HTTP 408/429, or HTTP 5xx response. Other HTTP errors are not retried. After the final failure, the user message remains saved, the usage result is recorded as failed, a warning is logged, and the browser displays a friendly error.
 
-There is no separate API route for this flow, and no frontend promise to await. The user's message is saved before the external Gemini request; the two saves are not in a single transaction. Therefore a failed AI call does not roll back the user message.
+There is no separate PHP `chat_handler.php` endpoint; the existing authenticated Laravel route serves the JSON request. The user's message is saved before the external Gemini request; the two saves are not in a single transaction. Therefore a failed AI call does not roll back the user message.
 
 ## Configuration names
 

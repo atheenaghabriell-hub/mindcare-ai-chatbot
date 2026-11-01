@@ -1,4 +1,3 @@
-import './bootstrap';
 import './script';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import Chart from 'chart.js/auto';

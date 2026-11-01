@@ -75,6 +75,12 @@ The repository includes a minimal Docker runtime because Render does not provide
 
 The Docker container runs `php artisan config:cache` at startup, after Render injects the service environment variables. Do not generate the config cache during the image build or commit `bootstrap/cache/config.php`; it contains resolved configuration values and must reflect the current runtime environment.
 
+### Small-memory deployments (2 GB RAM)
+
+The Docker image limits Apache to three prefork PHP workers, caps each PHP request at 128 MB, and configures a 64 MB shared OPcache. These are conservative starting limits for a small single-instance deployment, not a guarantee of total container memory usage: Apache, PHP extensions, the operating system, and any co-located services also use RAM. The database should remain external (such as Neon) on a 2 GB web host. If memory pressure persists, lower `MaxRequestWorkers` and `ServerLimit` together in `docker/apache-mpm.conf`; doing so also lowers simultaneous request capacity. The app calls Gemini synchronously, so requests can hold a worker while waiting on the provider.
+
+The local `composer dev` command starts only the PHP web server and Vite. It does not start a queue worker or a log-tail process; start those separately only if later features require them.
+
 GitHub Actions can run the daily expiry command using the Neon and application-key secrets, but it does **not** host the Laravel web app and does not replace a real scheduler/monitoring policy for high-risk workloads. Render's free web service may sleep when idle and has an ephemeral filesystem; user data remains in Neon PostgreSQL.
 
 The local development database remains XAMPP/MySQL. PostgreSQL is a supported CI/deployment database target; migrations and application queries use Laravel schema, Eloquent, and Query Builder APIs rather than database-specific SQL. CI tests both database engines. A live Neon migration must still be run against the actual Neon project before launch.

@@ -19,6 +19,8 @@ RUN apt-get update \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY docker/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/apache-mpm.conf /etc/apache2/conf-available/zz-mpm-prefork.conf
+RUN a2enconf zz-mpm-prefork
 
 WORKDIR /var/www/html
 
@@ -31,6 +33,8 @@ COPY --from=frontend /app/public/build ./public/build
 RUN composer dump-autoload --no-dev --classmap-authoritative \
     && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
+
+COPY docker/php-production.ini /usr/local/etc/php/conf.d/zz-production.ini
 
 EXPOSE 8080
 

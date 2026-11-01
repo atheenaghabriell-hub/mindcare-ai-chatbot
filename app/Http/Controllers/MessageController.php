@@ -6,12 +6,14 @@ use App\Http\Requests\SendMessageRequest;
 use App\Models\Conversation;
 use App\Models\CrisisReviewEvent;
 use App\Services\AI\GeminiChatService;
+use App\Services\AI\GeminiChatException;
 use App\Services\Safety\CrisisDetectionService;
 use App\Services\Sentiment\SentimentService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class MessageController extends Controller
@@ -70,34 +72,40 @@ class MessageController extends Controller
         }
 
         $startedAt = hrtime(true);
+        $diagnosticId = (string) Str::uuid();
 
         try {
-            $reply = $gemini->reply($conversation);
+            $reply = $gemini->reply($conversation, $diagnosticId);
         } catch (RuntimeException|ConnectionException $exception) {
             $this->recordUsage($request, $content, null, 'failed', $startedAt);
 
-            $exceptionMessage = $exception->getMessage();
-            $apiKey = config('services.gemini.api_key');
-
-            if (is_string($apiKey) && $apiKey !== '') {
-                $exceptionMessage = str_replace($apiKey, '[redacted]', $exceptionMessage);
-            }
+            $failureCode = $exception instanceof GeminiChatException
+                ? $exception->failureCode
+                : ($exception instanceof ConnectionException ? 'connection_failed' : 'unexpected_error');
 
             Log::warning('Gemini response failed.', [
-                'conversation_id' => $conversation->id,
+                'conversation_id' => (string) $conversation->getKey(),
                 'exception' => $exception::class,
-                'exception_message' => $exceptionMessage,
+                'failure_code' => $failureCode,
+                'diagnostic_id' => $diagnosticId,
             ]);
+
+            $errorMessage = $exception instanceof GeminiChatException
+                ? $exception->getMessage()
+                : ($exception instanceof ConnectionException
+                    ? 'The server could not connect to Gemini after retrying. Check the service network and try again.'
+                    : 'The server encountered an unexpected error while generating a reply.');
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Your message was saved, but the AI reply failed. Please try again later.',
+                    'error' => $errorMessage.' Reference ID: '.$diagnosticId,
+                    'diagnostic_id' => $diagnosticId,
                 ], 502);
             }
 
             return redirect()->route('conversations.show', $conversation)
-                ->withErrors(['chat' => 'Your message was saved, but the AI reply failed. Please try again later.']);
+                ->withErrors(['chat' => $errorMessage.' Reference ID: '.$diagnosticId]);
         }
 
         $this->recordUsage($request, $content, $reply, 'succeeded', $startedAt);

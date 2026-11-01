@@ -382,6 +382,40 @@ class MindCareApplicationFlowTest extends TestCase
         );
     }
 
+    public function test_gemini_retries_a_temporary_failure_and_returns_visible_text_parts(): void
+    {
+        config([
+            'services.gemini.api_key' => 'test-key',
+            'services.gemini.model' => 'test-model',
+        ]);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push(['error' => ['status' => 'UNAVAILABLE']], 503)
+                ->push([
+                    'candidates' => [[
+                        'content' => ['parts' => [
+                            ['text' => 'Internal reasoning that must not be shown.', 'thought' => true],
+                            ['text' => 'Thanks for telling me. '],
+                            ['text' => 'I am here to listen.'],
+                        ]],
+                    ]],
+                ]),
+        ]);
+
+        $user = User::factory()->create(['gemini_data_sharing_consented_at' => now()]);
+        $conversation = Conversation::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->postJson(route('messages.store', $conversation), ['content' => 'I feel worried today.'])
+            ->assertOk()
+            ->assertExactJson([
+                'success' => true,
+                'reply' => 'Thanks for telling me. I am here to listen.',
+            ]);
+
+        Http::assertSentCount(2);
+    }
+
     public function test_failed_gemini_request_logs_provider_status_without_chat_content_or_credentials(): void
     {
         config([
@@ -417,13 +451,76 @@ class MindCareApplicationFlowTest extends TestCase
 
         Log::shouldHaveReceived('warning')
             ->withArgs(fn (string $message, array $context): bool => $message === 'Gemini response failed.'
-                && $context['exception'] === \RuntimeException::class
-                && $context['exception_message'] === 'Gemini could not complete the request. Please try again later.'
-                && ! str_contains($context['exception_message'], 'test-key')
-                && ! str_contains($context['exception_message'], 'Private test message'))
+                && $context['exception'] === \App\Services\AI\GeminiChatException::class
+                && $context['failure_code'] === 'quota_or_rate_limit'
+                && is_string($context['diagnostic_id'] ?? null)
+                && ! array_key_exists('exception_message', $context))
             ->once();
 
         $this->assertDatabaseHas('ai_usage_logs', ['user_id' => $user->id, 'status' => 'failed']);
+    }
+
+    public function test_json_gemini_authentication_error_shows_safe_reason_and_log_reference(): void
+    {
+        config([
+            'services.gemini.api_key' => 'test-key',
+            'services.gemini.model' => 'test-model',
+        ]);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'error' => [
+                    'code' => 403,
+                    'status' => 'PERMISSION_DENIED',
+                ],
+            ], 403),
+        ]);
+        Log::spy();
+
+        $user = User::factory()->create(['gemini_data_sharing_consented_at' => now()]);
+        $conversation = Conversation::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)
+            ->postJson(route('messages.store', $conversation), ['content' => 'I feel worried today.'])
+            ->assertStatus(502)
+            ->assertJsonPath('success', false);
+
+        $diagnosticId = $response->json('diagnostic_id');
+        $this->assertIsString($diagnosticId);
+        $this->assertMatchesRegularExpression('/Gemini rejected the server credentials or API access/', $response->json('error'));
+        $this->assertStringContainsString($diagnosticId, $response->json('error'));
+
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message, array $context): bool => $message === 'Gemini API request failed.'
+                && $context['http_status'] === 403
+                && $context['provider_status'] === 'PERMISSION_DENIED'
+                && $context['diagnostic_id'] === $diagnosticId)
+            ->once();
+
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message, array $context): bool => $message === 'Gemini response failed.'
+                && $context['failure_code'] === 'authentication_failed'
+                && $context['diagnostic_id'] === $diagnosticId)
+            ->once();
+    }
+
+    public function test_json_gemini_failure_identifies_missing_model_configuration(): void
+    {
+        config([
+            'services.gemini.api_key' => 'test-key',
+            'services.gemini.model' => '',
+        ]);
+        Http::preventStrayRequests();
+
+        $user = User::factory()->create(['gemini_data_sharing_consented_at' => now()]);
+        $conversation = Conversation::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)
+            ->postJson(route('messages.store', $conversation), ['content' => 'I feel worried today.'])
+            ->assertStatus(502)
+            ->assertJsonPath('success', false);
+
+        $this->assertStringContainsString('GEMINI_MODEL is missing', $response->json('error'));
+        $this->assertNotEmpty($response->json('diagnostic_id'));
     }
 
     public function test_empty_gemini_response_logs_safe_candidate_metadata(): void
