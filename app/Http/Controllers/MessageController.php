@@ -9,6 +9,7 @@ use App\Services\AI\GeminiChatService;
 use App\Services\Safety\CrisisDetectionService;
 use App\Services\Sentiment\SentimentService;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -21,7 +22,7 @@ class MessageController extends Controller
         CrisisDetectionService $crisisDetection,
         SentimentService $sentiment,
         GeminiChatService $gemini,
-    ): RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         $content = $request->validated('content');
         $message = $conversation->messages()->create([
             'role' => 'user',
@@ -41,17 +42,29 @@ class MessageController extends Controller
                 ]);
             }
 
+            $crisisReply = $crisisDetection->response();
             $conversation->messages()->create([
                 'role' => 'assistant',
-                'content' => $crisisDetection->response(),
+                'content' => $crisisReply,
             ]);
             $conversation->update(['last_message_at' => now()]);
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'reply' => $crisisReply]);
+            }
 
             return redirect()->route('conversations.show', $conversation)
                 ->with('status', 'Support information is available below. This chat does not contact emergency services.');
         }
 
         if (! $request->user()->hasConsentedToGeminiSharing()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Your message was saved but not sent to Gemini. Review your privacy settings to opt in before using AI chat.',
+                ], 403);
+            }
+
             return redirect()->route('settings.privacy')
                 ->with('status', 'Your message was saved, but not sent to Gemini. Review the privacy settings to opt in before using AI chat.');
         }
@@ -76,6 +89,13 @@ class MessageController extends Controller
                 'exception_message' => $exceptionMessage,
             ]);
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Your message was saved, but the AI reply failed. Please try again later.',
+                ], 502);
+            }
+
             return redirect()->route('conversations.show', $conversation)
                 ->withErrors(['chat' => 'Your message was saved, but the AI reply failed. Please try again later.']);
         }
@@ -87,6 +107,10 @@ class MessageController extends Controller
         ]);
 
         $conversation->update(['last_message_at' => now()]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'reply' => $reply]);
+        }
 
         return redirect()->route('conversations.show', $conversation);
     }

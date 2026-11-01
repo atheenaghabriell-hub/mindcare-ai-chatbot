@@ -351,6 +351,37 @@ class MindCareApplicationFlowTest extends TestCase
         $this->assertDatabaseHas('ai_usage_logs', ['user_id' => $user->id, 'status' => 'succeeded']);
     }
 
+    public function test_json_chat_request_returns_the_gemini_reply(): void
+    {
+        config([
+            'services.gemini.api_key' => 'test-key',
+            'services.gemini.model' => 'test-model',
+        ]);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => 'I am glad you shared that.']]],
+                ]],
+            ]),
+        ]);
+
+        $user = User::factory()->create(['gemini_data_sharing_consented_at' => now()]);
+        $conversation = Conversation::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->postJson(route('messages.store', $conversation), ['content' => 'I feel calm today.'])
+            ->assertOk()
+            ->assertExactJson([
+                'success' => true,
+                'reply' => 'I am glad you shared that.',
+            ]);
+
+        $this->assertSame(
+            'I am glad you shared that.',
+            $conversation->messages()->where('role', 'assistant')->firstOrFail()->content,
+        );
+    }
+
     public function test_failed_gemini_request_logs_provider_status_without_chat_content_or_credentials(): void
     {
         config([
