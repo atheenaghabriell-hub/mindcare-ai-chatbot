@@ -68,9 +68,12 @@ The repository includes a minimal Docker runtime because Render does not provide
 1. Push the repository to GitHub. The `.env` file and real credentials must not be committed.
 2. In Render, choose **New → Blueprint**, connect the GitHub repository, and select the branch to deploy. Render reads `render.yaml` and builds the app from the `Dockerfile`.
 3. Enter the prompted `APP_KEY`, `APP_URL`, `DB_URL`, `GEMINI_API_KEY`, and `GEMINI_MODEL` values. Use a newly rotated Gemini key and a newly rotated Neon database password; never reuse credentials exposed in chat.
-4. Set `APP_URL` to the HTTPS URL Render assigns to the service. Laravel uses that HTTPS scheme when generating page, form, and Vite asset URLs, including behind Render's HTTP reverse proxy. Keep `APP_DEBUG=false`.
-5. Add GitHub Actions secrets `APP_KEY` and `NEON_MIGRATION_URL`, then run the manually confirmed migration workflow. The migration URL should be direct/non-pooled. Render's free plan does not run paid pre-deploy commands, so migrations are intentionally a separate, explicit step.
-6. Verify the service health check at `/up`, then register a test account and exercise the app. Confirm Render logs go to standard error and the database is Neon.
+4. Configure the prompted SMTP values (`MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and `MAIL_FROM_ADDRESS`) from a trusted mail provider so email-verification links can be delivered. `MAIL_MAILER=smtp`, `MAIL_SCHEME=tls`, and port `587` are set in the Blueprint; adjust these to match the provider.
+5. Set `APP_URL` to the HTTPS URL Render assigns to the service. Laravel uses that HTTPS scheme when generating page, form, and Vite asset URLs, including behind Render's HTTP reverse proxy. Keep `APP_DEBUG=false`.
+6. Add GitHub Actions secrets `APP_KEY` and `NEON_MIGRATION_URL`, then run the manually confirmed migration workflow. The migration URL should be direct/non-pooled. Render's free plan does not run paid pre-deploy commands, so migrations are intentionally a separate, explicit step.
+7. Verify the service health check at `/up`, then register a test account and verify that the email arrives before exercising the app. Confirm Render logs go to standard error and the database is Neon.
+
+The Docker container runs `php artisan config:cache` at startup, after Render injects the service environment variables. Do not generate the config cache during the image build or commit `bootstrap/cache/config.php`; it contains resolved configuration values and must reflect the current runtime environment.
 
 GitHub Actions can run the daily expiry command using the Neon and application-key secrets, but it does **not** host the Laravel web app and does not replace a real scheduler/monitoring policy for high-risk workloads. Render's free web service may sleep when idle and has an ephemeral filesystem; user data remains in Neon PostgreSQL.
 

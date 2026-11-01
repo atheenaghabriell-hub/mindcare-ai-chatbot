@@ -10,7 +10,7 @@
         @csrf
         <label for="name">Name</label>
         <input id="name" name="name" value="{{ old('name') }}" autocomplete="name" maxlength="255" required>
-        <label for="email">Email</label>
+        <label for="email">Email (you must verify this address before signing in)</label>
         <input id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="email" required>
         <label for="password">Password (at least 9 characters, including letters and numbers)</label>
         <input id="password" name="password" type="password" autocomplete="new-password" required>

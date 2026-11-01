@@ -34,7 +34,23 @@
         value: stderr
       - key: LOG_LEVEL
         value: info
+      - key: MAIL_MAILER
+        value: smtp
+      - key: MAIL_SCHEME
+        value: tls
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM_ADDRESS
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: MindCare
       - key: GEMINI_API_KEY
-        sync: true
+        sync: false
       - key: GEMINI_MODEL
-        sync: true
+        sync: false

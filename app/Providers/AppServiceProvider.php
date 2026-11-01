@@ -28,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureDatabaseConnection();
+
         Paginator::useBootstrapFive();
 
         if (
@@ -60,5 +62,40 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(5)->by('login-ip:'.$request->ip()),
             Limit::perMinute(5)->by('login-email:'.hash('sha256', $email)),
         ];
+    }
+
+    /**
+     * Auto-detect and configure active database connection if set to 'auto'.
+     */
+    protected function configureDatabaseConnection(): void
+    {
+        if (config('database.default') !== 'auto') {
+            return;
+        }
+
+        if ($this->app->environment('production')) {
+            config(['database.default' => 'pgsql']);
+            return;
+        }
+
+        $localPort = (int) config('database.connections.mysql.port', 3306);
+        $localHost = (string) config('database.connections.mysql.host', '127.0.0.1');
+        $localAvailable = false;
+
+        if (extension_loaded('pdo_mysql')) {
+            $connection = @fsockopen($localHost, $localPort, $errno, $errstr, 0.15);
+            if (is_resource($connection)) {
+                fclose($connection);
+                $localAvailable = true;
+            }
+        }
+
+        if ($localAvailable) {
+            config(['database.default' => 'mysql']);
+        } elseif (extension_loaded('pdo_pgsql') && config('database.connections.pgsql.host')) {
+            config(['database.default' => 'pgsql']);
+        } else {
+            config(['database.default' => 'mysql']);
+        }
     }
 }

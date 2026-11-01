@@ -21,6 +21,12 @@ class SetMindCareAdmin extends Command
             return self::FAILURE;
         }
 
+        if (! $this->option('remove') && ! $user->hasVerifiedEmail()) {
+            $this->error('Email address must be verified before admin access can be granted.');
+
+            return self::FAILURE;
+        }
+
         $isAdmin = ! $this->option('remove');
         $user->forceFill(['is_admin' => $isAdmin])->save();
 

@@ -8,18 +8,23 @@ use App\Models\Message;
 use App\Models\MoodLog;
 use App\Models\User;
 use App\Services\Safety\CrisisDetectionService;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class MindCareApplicationFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_registration_requires_privacy_acknowledgement_and_signs_user_in(): void
+    public function test_registration_requires_privacy_acknowledgement_and_email_verification(): void
     {
+        Notification::fake();
+
         $this->post(route('register.store'), [
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -33,10 +38,47 @@ class MindCareApplicationFlowTest extends TestCase
             'password' => 'mindcare-password-123',
             'password_confirmation' => 'mindcare-password-123',
             'privacy_acknowledged' => '1',
-        ])->assertRedirect(route('dashboard'));
+        ])->assertRedirect(route('verification.notice'));
 
-        $this->assertAuthenticated();
+        $this->assertGuest();
         $this->assertDatabaseHas('users', ['email' => 'test@example.com']);
+
+        $user = User::query()->where('email', 'test@example.com')->firstOrFail();
+        $this->assertNull($user->email_verified_at);
+        Notification::assertSentTo($user, VerifyEmail::class);
+    }
+
+    public function test_unverified_users_must_verify_before_using_the_app(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('verification.notice'));
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->getEmailForVerification())]
+        );
+
+        $this->get($verificationUrl)
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('status', 'Your email address has been verified.');
+
+        $this->assertNotNull($user->fresh()->email_verified_at);
+        $this->get(route('dashboard'))->assertOk();
+    }
+
+    public function test_unverified_users_can_sign_out_from_the_verification_page(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $this->actingAs($user)
+            ->post(route('logout'))
+            ->assertRedirect(route('login'));
+
+        $this->assertGuest();
     }
 
     public function test_registration_accepts_a_nine_character_password_with_letters_and_numbers(): void
@@ -47,9 +89,9 @@ class MindCareApplicationFlowTest extends TestCase
             'password' => 'mindcare9',
             'password_confirmation' => 'mindcare9',
             'privacy_acknowledged' => '1',
-        ])->assertRedirect(route('dashboard'));
+        ])->assertRedirect(route('verification.notice'));
 
-        $this->assertAuthenticated();
+        $this->assertGuest();
     }
 
     public function test_registration_rejects_passwords_shorter_than_nine_characters(): void
@@ -104,6 +146,17 @@ class MindCareApplicationFlowTest extends TestCase
             ->assertSessionHasErrors('email');
 
         $this->assertGuest();
+    }
+
+    public function test_admin_provisioning_rejects_unverified_email_addresses(): void
+    {
+        $user = User::factory()->unverified()->create(['email' => 'unverified@example.com']);
+
+        $this->artisan('mindcare:admin', ['email' => $user->email])
+            ->expectsOutput('Email address must be verified before admin access can be granted.')
+            ->assertExitCode(1);
+
+        $this->assertFalse($user->fresh()->is_admin);
     }
 
     public function test_conversation_history_and_mood_entries_are_private_to_authenticated_user(): void
