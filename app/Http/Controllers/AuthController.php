@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -77,9 +77,17 @@ class AuthController extends Controller
             'password' => Hash::make($data['password']),
         ]);
 
-        event(new Registered($user));
+        Auth::login($user);
+        $request->session()->regenerate();
 
-        return redirect()->route('verification.notice');
+        if (config('auth.email_verification_required')) {
+            event(new Registered($user));
+
+            return redirect()->route('verification.notice');
+        }
+
+        return redirect()->route('dashboard')
+            ->with('status', 'Account created. Email verification is temporarily disabled.');
     }
 
     public function logout(Request $request): RedirectResponse

@@ -23,6 +23,7 @@ class MindCareApplicationFlowTest extends TestCase
 
     public function test_registration_requires_privacy_acknowledgement_and_email_verification(): void
     {
+        config(['auth.email_verification_required' => true]);
         Notification::fake();
 
         $this->post(route('register.store'), [
@@ -40,7 +41,7 @@ class MindCareApplicationFlowTest extends TestCase
             'privacy_acknowledged' => '1',
         ])->assertRedirect(route('verification.notice'));
 
-        $this->assertGuest();
+        $this->assertAuthenticated();
         $this->assertDatabaseHas('users', ['email' => 'test@example.com']);
 
         $user = User::query()->where('email', 'test@example.com')->firstOrFail();
@@ -50,6 +51,7 @@ class MindCareApplicationFlowTest extends TestCase
 
     public function test_unverified_users_must_verify_before_using_the_app(): void
     {
+        config(['auth.email_verification_required' => true]);
         $user = User::factory()->unverified()->create();
 
         $this->actingAs($user)
@@ -83,15 +85,21 @@ class MindCareApplicationFlowTest extends TestCase
 
     public function test_registration_accepts_a_nine_character_password_with_letters_and_numbers(): void
     {
+        config(['auth.email_verification_required' => false]);
+        Notification::fake();
+
         $this->post(route('register.store'), [
             'name' => 'Nine Character User',
             'email' => 'nine@example.com',
             'password' => 'mindcare9',
             'password_confirmation' => 'mindcare9',
             'privacy_acknowledged' => '1',
-        ])->assertRedirect(route('verification.notice'));
+        ])->assertRedirect(route('dashboard'))
+            ->assertSessionHas('status', 'Account created. Email verification is temporarily disabled.');
 
-        $this->assertGuest();
+        $this->assertAuthenticated();
+        $this->assertNull(User::query()->where('email', 'nine@example.com')->firstOrFail()->email_verified_at);
+        Notification::assertNothingSent();
     }
 
     public function test_registration_rejects_passwords_shorter_than_nine_characters(): void

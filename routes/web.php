@@ -9,6 +9,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MoodController;
 use App\Http\Controllers\PrivacySettingsController;
 use App\Http\Controllers\SafetyReviewController;
+use App\Http\Middleware\EnsureEmailIsVerifiedWhenRequired;
 use App\Models\Conversation;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -39,7 +40,7 @@ Route::middleware('auth')->group(function (): void {
         ->name('verification.send');
 });
 
-Route::middleware(['auth', 'verified'])->group(function (): void {
+Route::middleware(['auth', EnsureEmailIsVerifiedWhenRequired::class])->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('/conversations', [ConversationController::class, 'index'])->name('conversations.index');

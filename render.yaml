@@ -13,13 +13,13 @@
       - key: APP_DEBUG
         value: "false"
       - key: APP_KEY
-        sync: false
+        sync: true
       - key: APP_URL
-        sync: false
+        sync: true
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_URL
-        sync: false
+        sync: true
       - key: DB_SSLMODE
         value: require
       - key: SESSION_SECURE_COOKIE
@@ -34,6 +34,8 @@
         value: stderr
       - key: LOG_LEVEL
         value: info
+      - key: EMAIL_VERIFICATION_REQUIRED
+        value: "false"
       - key: MAIL_MAILER
         value: smtp
       - key: MAIL_SCHEME
@@ -51,6 +53,6 @@
       - key: MAIL_FROM_NAME
         value: MindCare
       - key: GEMINI_API_KEY
-        sync: false
+        sync: true
       - key: GEMINI_MODEL
-        sync: false
+        sync: true
