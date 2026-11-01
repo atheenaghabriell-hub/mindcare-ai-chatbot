@@ -8,6 +8,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MoodController;
 use App\Http\Controllers\PrivacySettingsController;
 use App\Http\Controllers\SafetyReviewController;
+use App\Models\Conversation;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +34,8 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/conversations', [ConversationController::class, 'index'])->name('conversations.index');
     Route::post('/conversations', [ConversationController::class, 'store'])->name('conversations.store');
     Route::get('/conversations/{conversation}', [ConversationController::class, 'show'])->name('conversations.show');
+    Route::get('/conversations/{conversation}/messages', fn (Conversation $conversation) => redirect()->route('conversations.show', $conversation))
+        ->name('messages.redirect');
     Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy'])->name('conversations.destroy');
     Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store'])
         ->middleware('throttle:chat')

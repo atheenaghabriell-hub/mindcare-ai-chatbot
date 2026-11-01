@@ -36,6 +36,16 @@ class ConversationPrivacyTest extends TestCase
         );
     }
 
+    public function test_getting_the_message_endpoint_redirects_to_the_conversation(): void
+    {
+        $user = User::factory()->create();
+        $conversation = Conversation::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('messages.redirect', $conversation))
+            ->assertRedirect(route('conversations.show', $conversation));
+    }
+
     public function test_deleting_a_user_cascades_private_mindcare_data(): void
     {
         $user = User::factory()->create();
