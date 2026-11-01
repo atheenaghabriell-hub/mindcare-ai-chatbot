@@ -35,6 +35,6 @@
       - key: LOG_LEVEL
         value: info
       - key: GEMINI_API_KEY
-        sync: false
+        sync: true
       - key: GEMINI_MODEL
-        sync: false
+        sync: true

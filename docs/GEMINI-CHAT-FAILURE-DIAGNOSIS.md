@@ -26,6 +26,8 @@ The application reads only these Gemini environment variables:
 
 The model value must be a model identifier accepted by Google's `v1beta/models/{model}:generateContent` endpoint. Do not include an additional `models/` prefix in the value.
 
+For `gemini-3.8-flash`, the request omits `generationConfig.temperature`; other configured models retain the existing `0.4` value. A 400 response can indicate an invalid request configuration, so verify the provider status/code in the Render logs if the issue persists.
+
 ## Diagnostic logging and privacy
 
 Gemini failures can originate from:

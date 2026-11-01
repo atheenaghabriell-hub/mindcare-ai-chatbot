@@ -58,6 +58,14 @@ class GeminiChatService
             $history = [...$pastMessages->all(), ...$history];
         }
 
+        $generationConfig = [
+            'maxOutputTokens' => 700,
+        ];
+
+        if (! str_starts_with($model, 'gemini-3.8-flash')) {
+            $generationConfig['temperature'] = 0.4;
+        }
+
         $response = Http::timeout(30)
             ->acceptJson()
             ->withHeaders(['x-goog-api-key' => $apiKey])
@@ -68,10 +76,7 @@ class GeminiChatService
                     ]],
                 ],
                 'contents' => $history,
-                'generationConfig' => [
-                    'temperature' => 0.4,
-                    'maxOutputTokens' => 700,
-                ],
+                'generationConfig' => $generationConfig,
             ]);
 
         if (! $response->successful()) {

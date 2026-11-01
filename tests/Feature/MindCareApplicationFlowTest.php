@@ -264,7 +264,7 @@ class MindCareApplicationFlowTest extends TestCase
     {
         config([
             'services.gemini.api_key' => 'test-key',
-            'services.gemini.model' => 'test-model',
+            'services.gemini.model' => 'gemini-3.8-flash',
         ]);
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
@@ -281,9 +281,11 @@ class MindCareApplicationFlowTest extends TestCase
             ->post(route('messages.store', $conversation), ['content' => 'I feel calm today.'])
             ->assertRedirect(route('conversations.show', $conversation));
 
-        Http::assertSent(fn ($request) => str_contains($request->url(), 'test-model:generateContent')
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'gemini-3.8-flash:generateContent')
             && $request->hasHeader('x-goog-api-key', 'test-key')
-            && $request['contents'][0]['parts'][0]['text'] === 'I feel calm today.');
+            && $request['contents'][0]['parts'][0]['text'] === 'I feel calm today.'
+            && $request['generationConfig']['maxOutputTokens'] === 700
+            && ! array_key_exists('temperature', $request['generationConfig']));
         $this->assertDatabaseHas('messages', ['conversation_id' => $conversation->id, 'role' => 'assistant']);
         $this->assertDatabaseHas('ai_usage_logs', ['user_id' => $user->id, 'status' => 'succeeded']);
     }
