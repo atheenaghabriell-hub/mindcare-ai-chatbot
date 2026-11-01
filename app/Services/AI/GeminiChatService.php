@@ -75,7 +75,7 @@ class GeminiChatService
             $generationConfig['temperature'] = 0.4;
         }
 
-        $response = $this->generateContent($apiKey, $model, $history, $generationConfig, $diagnosticId);
+        $response = $this->generateContent($apiKey, $model, $history, $generationConfig);
 
         if (! $response->successful()) {
             Log::warning('Gemini API request failed.', [
@@ -106,7 +106,7 @@ class GeminiChatService
 
             throw new GeminiChatException(
                 'empty_response',
-                'Gemini returned no visible reply. Try rephrasing your message. If this keeps happening, contact the administrator with the reference ID.',
+                'Gemini returned no visible reply. Try rephrasing your message. If this keeps happening, contact the administrator.',
             );
         }
 
@@ -122,7 +122,6 @@ class GeminiChatService
         string $model,
         array $history,
         array $generationConfig,
-        string $diagnosticId,
     ): Response {
         for ($attempt = 1; $attempt <= 2; $attempt++) {
             try {
@@ -142,7 +141,7 @@ class GeminiChatService
                 if ($attempt === 2) {
                     throw new GeminiChatException(
                         'connection_failed',
-                        'The server could not connect to Gemini after retrying. Check the service network and try again. Reference ID: '.$diagnosticId,
+                        'The server could not connect to Gemini after retrying. Check the service network and try again.',
                         $exception,
                     );
                 }
@@ -198,7 +197,7 @@ class GeminiChatService
                 ]
                 : [
                     'provider_rejected_request',
-                    "Gemini rejected the request (HTTP {$status}). Contact the administrator with the reference ID.",
+                    "Gemini rejected the request (HTTP {$status}). Contact the administrator.",
                 ],
         };
 

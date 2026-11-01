@@ -16,8 +16,8 @@ class PrivacySettingsController extends Controller
         $model = config('services.gemini.model');
 
         return view('profile.privacy', [
-            'geminiConfigured' => is_string($apiKey) && $apiKey !== ''
-                && is_string($model) && $model !== '',
+            'geminiConfigured' => \is_string($apiKey) && $apiKey !== ''
+                && \is_string($model) && $model !== '',
         ]);
     }
 
