@@ -31,7 +31,9 @@
       - key: QUEUE_CONNECTION
         value: database
       - key: LOG_CHANNEL
-        value: stderr
+        value: stack
+      - key: LOG_STACK
+        value: single,stderr
       - key: LOG_LEVEL
         value: info
       - key: EMAIL_VERIFICATION_REQUIRED
