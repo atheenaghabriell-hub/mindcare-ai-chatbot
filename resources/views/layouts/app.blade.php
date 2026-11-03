@@ -23,6 +23,7 @@
                         @if(auth()->user()->is_admin)
                             <a class="nav-link" href="{{ route('admin.analytics') }}">Admin metrics</a>
                             <a class="nav-link" href="{{ route('admin.safety-reviews') }}">Safety reviews</a>
+                            <a class="nav-link" href="{{ route('admin.logs') }}">Application logs</a>
                         @endif
                         <form method="POST" action="{{ route('logout') }}" class="ms-lg-2">@csrf
                             <button class="btn btn-outline-success btn-sm" type="submit">Sign out</button>

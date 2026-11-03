@@ -41,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(Conversation::class, ConversationPolicy::class);
         Gate::define('view-admin-analytics', fn ($user): bool => $user->is_admin === true);
+        Gate::define('view-application-logs', fn ($user): bool => $user->is_admin === true);
         Gate::define('review-crisis-events', fn ($user): bool => $user->is_admin === true);
         RateLimiter::for('login', fn (Request $request) => $this->loginLimits($request));
         RateLimiter::for('admin-login', fn (Request $request) => $this->loginLimits($request));

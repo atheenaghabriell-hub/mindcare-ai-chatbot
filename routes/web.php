@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminAnalyticsController;
+use App\Http\Controllers\AdminLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\DashboardController;
@@ -59,5 +60,6 @@ Route::middleware(['auth', EnsureEmailIsVerifiedWhenRequired::class])->group(fun
     Route::delete('/settings/account', [PrivacySettingsController::class, 'destroyAccount'])->name('settings.account.destroy');
 
     Route::get('/admin/analytics', AdminAnalyticsController::class)->name('admin.analytics');
+    Route::get('/admin/logs', AdminLogController::class)->name('admin.logs');
     Route::get('/admin/safety-reviews', [SafetyReviewController::class, 'index'])->name('admin.safety-reviews');
 });
