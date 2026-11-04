@@ -83,12 +83,29 @@ class MessageController extends Controller
                 ? $exception->failureCode
                 : ($exception instanceof ConnectionException ? 'connection_failed' : 'unexpected_error');
 
-            Log::warning('Gemini response failed.', [
+            $logContext = [
                 'conversation_id' => (string) $conversation->getKey(),
                 'exception' => $exception::class,
                 'failure_code' => $failureCode,
                 'diagnostic_id' => $diagnosticId,
-            ]);
+            ];
+
+            if ($failureCode === 'connection_failed' && $exception->getPrevious() !== null) {
+                $transportError = $exception->getPrevious()->getMessage();
+                $apiKey = config('services.gemini.api_key');
+
+                if (is_string($apiKey) && $apiKey !== '') {
+                    $transportError = str_replace($apiKey, '[redacted]', $transportError);
+                }
+
+                $transportError = preg_replace('/([?&]key=)[^&\s]+/i', '$1[redacted]', $transportError)
+                    ?? 'Transport error details could not be sanitized.';
+
+                $logContext['transport_exception'] = $exception->getPrevious()::class;
+                $logContext['transport_error'] = $transportError;
+            }
+
+            Log::warning('Gemini response failed.', $logContext);
 
             $errorMessage = $exception instanceof GeminiChatException
                 ? $exception->getMessage()

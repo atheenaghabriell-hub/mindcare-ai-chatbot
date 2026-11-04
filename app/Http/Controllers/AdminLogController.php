@@ -52,6 +52,10 @@ class AdminLogController extends Controller
                 'selectedLog' => $selectedLog,
                 'content' => $content,
                 'truncated' => $truncated,
+                'loggingChannel' => config('logging.default'),
+                'stackChannels' => config('logging.channels.stack.channels', []),
+                'logDirectoryExists' => is_dir(storage_path('logs')),
+                'logDirectoryWritable' => is_writable(storage_path('logs')),
             ])
             ->header('Cache-Control', 'private, no-store');
     }

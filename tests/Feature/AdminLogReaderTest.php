@@ -39,6 +39,18 @@ class AdminLogReaderTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_empty_log_page_shows_effective_logging_configuration(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.logs'))
+            ->assertOk()
+            ->assertSeeText('Logging status for this running instance')
+            ->assertSeeText('Active channel')
+            ->assertSeeText('Log folder');
+    }
+
     public function test_log_reader_does_not_accept_a_file_outside_the_log_directory(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);

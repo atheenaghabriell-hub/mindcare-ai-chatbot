@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Safety\CrisisDetectionService;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -458,6 +459,37 @@ class MindCareApplicationFlowTest extends TestCase
             ->once();
 
         $this->assertDatabaseHas('ai_usage_logs', ['user_id' => $user->id, 'status' => 'failed']);
+    }
+
+    public function test_gemini_connection_failure_logs_sanitized_transport_details(): void
+    {
+        config([
+            'services.gemini.api_key' => 'test-secret-key',
+            'services.gemini.model' => 'test-model',
+        ]);
+        Http::fake(function () {
+            throw new ConnectionException(
+                'cURL error 6: Could not resolve host generativelanguage.googleapis.com?key=test-secret-key'
+            );
+        });
+        Log::spy();
+
+        $user = User::factory()->create(['gemini_data_sharing_consented_at' => now()]);
+        $conversation = Conversation::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->postJson(route('messages.store', $conversation), ['content' => 'Private test message'])
+            ->assertStatus(502)
+            ->assertJsonPath('success', false);
+
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message, array $context): bool => $message === 'Gemini response failed.'
+                && $context['failure_code'] === 'connection_failed'
+                && $context['transport_exception'] === ConnectionException::class
+                && str_contains($context['transport_error'], 'Could not resolve host')
+                && ! str_contains($context['transport_error'], 'test-secret-key')
+                && ! str_contains($context['transport_error'], 'Private test message'))
+            ->once();
     }
 
     public function test_json_gemini_authentication_error_shows_safe_reason_and_log_reference(): void
